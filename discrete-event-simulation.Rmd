@@ -127,7 +127,7 @@ unserv<-function(){
       }
       
     }
-    
+    #caso 3
     if (n == 0 & tLL == Inf) # si no quedan clientes 
     {
       break           
@@ -166,6 +166,83 @@ El promedio estimado de clientes atendidos es de 80.2 y según el gráfico de la
 
 Un sistema necesita $n$ máquinas funcionando. Para asegurarse en caso de fallas mecánicas se dispone de algunas máquinas adicionales. Si una máquina falla es inmediatamente reemplazada por una de las máquinas disponibles. La máquina con fallos es enviada a la sección de reparación. La sección de reparación consiste en una sola persona que repara las máquinas de una en una. Una vez la máquina es reparada se reincorpora al conjunto de máquinas disponibles como reemplazo. Todos los tiempos de reparación son variables aleatorias independientes con distribución de probabilidad $G$. Cada vez que una maquina es puesta en uso, el tiempo que funciona antes de sufrir una falla mecánica es una variable aleatoria con función de probabilidad $F$. Se dice que el sistema colapsa cuando una máquina falla y no hay máquinas extra disponibles para reemplazo. Asumiendo que inicialmente existen $n + s$ máquinas funcionales de las cuales $n$ están en uso, y $s$ pueden ser utilizadas para reemplazar las máquinas que fallen, encuentre el tiempo esperado $T$, en el cual el sistema colapsa después de ejecutar la simulación 100 veces, si $n = 4$, $s = 3$, $F(x) = 1 - e^{-x}$, y $G(x) = 1 − e^{-2x}$. Realice el análisis del sistema y utilizando la estrategia de simulación basada en eventos discretos implemente la simulación en R.
 
+- Variable de tiempo t
+- Variables de estado del sistema: número de máquinas descompuestas 
+- Eventos: una máquina se descompone, una máquina termina de ser reparada
+- Lista de sucesos: {t1...tn, tf}, tf (tiempo en que una máquina en reparación vuelve a funciona). t1..tn (tiempos en orden de las fallas de n máquinas)
+
+Función de servicio
+```{r}
+#Se crea la función del tiempo de servicio
+Ts <- function(n, lambda) {
+  u <- runif(n)
+  x <- -(1/lambda) * log(u)
+  return(x)
+}
+```
+
+Simulación del sistema
+```{r}
+
+#Se desarrolla el sistema
+Tv = c(0)
+for (i in 1:100){
+  TT = 0
+  N = 4 
+  S = 3
+  R = 0
+  
+  Tf = Ts(1000,1)
+  Tr = Ts(1000,2)
+  i = 1
+  j = 1
+  
+  # Primer fallo
+  TT = TT + Tf[i]
+  S = S - 1
+  R = R + 1
+  i = i + 1
+  
+  while(TRUE){
+    # 
+    if(R>0){
+      if(Tf[i]>Tr[j]){
+        TT = TT + Tr[j]
+        S = S + 1
+        R = R - 1
+        Tf[i] = Tf[i] - Tr[j]
+        j = j + 1
+      }
+      
+      if(Tf[i]<Tr[j]){
+        TT = TT + Tf[i]
+        if(S==0){
+          break
+        }else{
+          S = S - 1
+          R = R + 1
+          Tr[j]= Tr[j] - Tf[i]
+          i = i + 1
+        }
+      }
+      
+    }else{
+      TT = TT + Tf[i]
+      S = S - 1
+      R = R + 1
+      i = i + 1
+    }
+    
+  }
+  Tv = c(Tv,TT)
+  
+  
+}
+meanT = mean(Tv)
+meanT
+hist(Tv,freq=FALSE)
+```
+El tiempo esperado es de 36.13 para que el sistema colapse después de ejecutar la simulación 100 veces.
 
 
 ##Punto 3
@@ -177,3 +254,117 @@ Los daños se disipan en el tiempo con una tasa exponencial $\alpha$ – Esto es
 
 Suponga que estamos interesados en usar un estudio de simulación para estimar el valor del tiempo promedio en el cual el sistema falla. Defina los eventos, variables de estado del sistema, variables contadoras y variables de salida de este modelo. Realice una implementación de este modelo en lenguaje de programación R. Extienda el programa para realizar $k$ réplicas que permita estimar el valor del tiempo promedio en el cual el sistema falla, si tenemos los valores de $\alpha = 0.5$, $C = 5$, y $k = 1000$. ¿Cuál es ese tiempo promedio de falla?
 
+Simulacion sigue una distribución de Poisson
+```{r}
+
+choque.t <- function(T, lambda) {
+    S <- vector()
+    t <- 0
+    I <- 0
+    repeat {
+        u1 <- runif(1) 
+        t <- t-(1/lambda)*log(u1)
+        if (t > T) {
+            break
+        }
+        I <- I+1
+        S[I] <- t
+    }
+    return(S)
+}
+
+
+valor_choque.pdf <- function(x){
+    x * exp(-x)
+}
+```
+
+
+```{r}
+
+
+valor_choque.r <- function(){
+
+    # Constante que garantiza f(y) < cg(y) 
+    c <- 5
+
+    repeat {
+
+        # Distribucion exponencial
+        y <- rexp(1)
+
+        # Uniforme
+        u <- runif(1)
+
+        if (u <= (valor_choque.pdf(y) / (dexp(y) * c))) {
+            x <- y
+            break
+        }
+    }
+    x
+}
+```
+
+Simulación del modelo
+```{r}
+modelo <- function(k, a, C) {
+
+    tiempos <- vector()
+    for (n in 1:k){
+        # Se genera una lista de tiempos de choque
+        
+        t_golpe <- choque.t(100, 1)
+
+        # Vector de danios
+        d_total <- 0
+        d <- vector()
+
+        
+
+        # Contador de iteraciones
+        i <- 1
+        for (t in t_golpe) {
+
+            d[i] <- valor_choque.r()
+
+            # Calculo la falla actual luego del golpe
+            d_total <- 0
+            j <- 1
+            for (d_actual in d) {
+                
+                d_total <- d_total + d_actual * exp(-a * (t - t_golpe[j]))
+                j <- j + 1
+            }
+
+            # Si la falla supera el maximo, se llega al evento de parada
+            if (d_total > C) {
+                break
+            }
+
+            i <- i + 1
+        }
+
+        tiempos[n] <- t
+    }
+
+    tiempos
+}
+
+
+k <- 1000
+
+
+a <- 0.5
+
+
+C <- 5
+
+tiempos <- modelo(k, a, C)
+
+cat("Luego de", k, "iteraciones.\n")
+cat("Tiempo promedio de parada:", mean(tiempos), "horas\n")
+
+hist(tiempos)
+```
+
+El tiempo promedio para que se detenga, es decir que el sistema falle es de aproximadamente 5.22 horas
