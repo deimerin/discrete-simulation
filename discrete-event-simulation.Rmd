@@ -3,6 +3,11 @@ title: "Taller Enfoque Simulacion Basado en Eventos Discretos"
 output: html_notebook
 ---
 
+##Integrantes
+##Deimer Castillo
+##Rances Rodriguez
+##Iveth Medina
+
 ##Punto 1
 
 En un modelo de cola con un solo servidor, la llegada de unos clientes sigue un proceso no homogéneo de Poisson, cuya tasa inicial es 3 por hora. La tasa se incrementa de forma lineal hasta que alcanza las 12 llegadas por hora a las 5 horas. Finalmente, la tasa de llegada de clientes decrece linealmente hasta que llega a 5 llegadas por hora después de 5 horas más. Realice la simulación durante las 10 horas si el tiempo de servicio sigue una distribución exponencial con tasa de 9 por hora. Use la simulación para estimar el valor esperado de clientes atendidos durante las 10 horas de simulación. Verifique que la distribución de llegada de los clientes sigue el proceso de Poisson descrito anteriormente. Ejecute 1000 veces la simulación para obtener el promedio del estimado.
