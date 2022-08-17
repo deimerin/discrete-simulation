@@ -27,7 +27,7 @@ m <- opt$objective
 cat("maximo =",m)
 ```
 
-Simulación de las llegadas en 10 horas de simulación
+Simulación de las llegadas de clientes en 10 horas 
 ```{r}
 S<-vector()
 u1<-vector()
@@ -57,7 +57,7 @@ curve(lambdat(x),xlim=c(0,10),ylab="lambda(t)",col="red",add=TRUE)
 LL[length(LL)+1]<-Inf
 ```
 
-Simulación del tiempo de servicio con distribución exponencial con tasa de 9 por hora
+Tiempo de servicio con distribución exponencial con tasa de 9 por hora
 
 ```{r}
 # Generación de tiempo de servicio
@@ -68,7 +68,7 @@ tserv<-function() {
 tserv()
 ```
 
-
+Simulación del sistema
 ```{r}
 
 # Evolución del sistema
@@ -106,6 +106,7 @@ unserv<-function(){
       
     }
     
+    #caso2
     if(tS <= tLL)#un cliente sale del servidor 1
     {
       t<-tS
@@ -132,8 +133,7 @@ unserv<-function(){
       break           
     }
   }
-  #if(NLL==length(LL))t1<-t
-  #t2<-t
+  
   if(tS==Inf)tS<-t
   resultados<-list("tiempos en el sistema",tm,"clientes en el sistema",c,
                 "tiempo medio cliente en el sistema",
@@ -149,8 +149,7 @@ unserv<-function(){
 
 ```
 
-
-Ejecuta 1000 veces la simulación
+Ejecución de la simulación 1000 veces
 ```{r}
 clientes_atendidos <- vector()
 for (i in 1:1000) {
@@ -158,11 +157,10 @@ for (i in 1:1000) {
   clientes_atendidos[i] <- out[[14]]
 }
 
-#out = unserv()
-#plot(unserv(LL)[[4]],type="l", ylab="Numero de clientes", xlab="Eventos")
+mean(clientes_atendidos)
 hist(clientes_atendidos,main = "Frecuencia de clientes atendidos",xlab = "clientes atendidos en 10 horas" )
 ```
-
+El promedio estimado de clientes atendidos es de 80.2 y según el gráfico de la simulación de llegadas de los clientes durante 10 horas este nos muestra que sigue un proceso de Poisson.
 
 ##Punto 2
 
