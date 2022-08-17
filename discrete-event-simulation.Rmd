@@ -3,16 +3,174 @@ title: "Taller Enfoque Simulacion Basado en Eventos Discretos"
 output: html_notebook
 ---
 
----
+##Punto 1
 
 En un modelo de cola con un solo servidor, la llegada de unos clientes sigue un proceso no homogéneo de Poisson, cuya tasa inicial es 3 por hora. La tasa se incrementa de forma lineal hasta que alcanza las 12 llegadas por hora a las 5 horas. Finalmente, la tasa de llegada de clientes decrece linealmente hasta que llega a 5 llegadas por hora después de 5 horas más. Realice la simulación durante las 10 horas si el tiempo de servicio sigue una distribución exponencial con tasa de 9 por hora. Use la simulación para estimar el valor esperado de clientes atendidos durante las 10 horas de simulación. Verifique que la distribución de llegada de los clientes sigue el proceso de Poisson descrito anteriormente. Ejecute 1000 veces la simulación para obtener el promedio del estimado.
 
----
+
+-Variable tiempo t
+-Variables contadoras: número de llegadas y numero de salidas
+-Estado del Sistema: número de clientes en el sistema
+-Lista de eventos: {tLL, tS, T}
+
+
+Función proceso no homogéneo
+```{r}
+lambdat<-function(x) ((1.8*x)+3)*I(x<=5)+((-1.4*x)+19)*I(x>5&x<=10)
+curve(lambdat(x),xlim=c(0,10),ylab="lambda(x)",col="red")
+```
+Máximo de la función anterior
+
+```{r}
+opt <- optimize(lambdat, c(0, 10), maximum=TRUE)
+m <- opt$objective
+cat("maximo =",m)
+```
+
+Simulación de las llegadas en 10 horas de simulación
+```{r}
+S<-vector()
+u1<-vector()
+u2<-vector()
+procpois<-function(Tmax,lambda) {
+  t<-0;I<-0;i<-1  
+  repeat {
+    u1[i]<-runif(1)   
+    t<-t-((1/lambda)*log(u1[i]))
+    if (t>Tmax) {
+      break
+    }
+    if (t<=Tmax) {
+      u2[i]<-runif(1)
+    }
+    if(u2[i]<=(lambdat(t)/lambda)) {
+      I<-I+1;S[I]<-t
+    }
+    i<-i+1
+  }
+return(S)
+}
+
+LL<-procpois(10,m)
+hist(LL,main = "Poisson no homogéneo",breaks = 12,xlab = "t (horas)")
+curve(lambdat(x),xlim=c(0,10),ylab="lambda(t)",col="red",add=TRUE)
+LL[length(LL)+1]<-Inf
+```
+
+Simulación del tiempo de servicio con distribución exponencial con tasa de 9 por hora
+
+```{r}
+# Generación de tiempo de servicio
+tserv<-function() {
+  t<- (-1/9)*log(1-runif(1))
+  return(t)
+}
+tserv()
+```
+
+
+```{r}
+
+# Evolución del sistema
+unserv<-function(){
+  LL<-procpois(10,m)
+  LL[length(LL)+1]<-Inf
+  t<-0
+  NLL<-0  #número de llegadas hasta t
+  NS<-0   # contador de salidas
+  n<-0  #numero de clientes en el sistema en t
+  Y<-vector() #tiempos de servicio
+  Sal<-vector()       # output instantes de salida
+  c<-vector()     # clientes en el sistema en cualquier t
+  tLL <- LL[1]  #instante de llegada del cliente 1
+  tS<-Inf   #instante de salida del sistema para el cliente i
+  tm<-vector() #tiempo cliente en el sistema
+  i<-1
+  j<-1
+  repeat
+  {
+    #Caso 1
+    if(tLL <= tS)#llega un cliente
+    {
+      t <- tLL
+      NLL <- NLL+1
+      i<-i+1
+      tLL <- LL[i]
+      n<-n+1
+      c[length(c)+1]<-n  # recogemos el número de clientes en el sistema
+      if(n==1){
+        Y[j] <- tserv()
+        tS <- t+Y[j] 
+        j <- j+1
+      }
+      
+    }
+    
+    if(tS <= tLL)#un cliente sale del servidor 1
+    {
+      t<-tS
+      NS<-NS + 1
+      n<-n-1
+      c[length(c)+1]<-n
+      Sal[NS]<-t
+      tm[NS]<-Sal[NS]-LL[NS]  # tiempo en el sistema
+      if(n==0)
+      {
+        tS<-Inf 
+      }
+      if(n>0)
+      {
+        Y[j]<-tserv()   
+        tS<-t+Y[j]
+        j<-j+1
+      }
+      
+    }
+    
+    if (n == 0 & tLL == Inf) # si no quedan clientes 
+    {
+      break           
+    }
+  }
+  #if(NLL==length(LL))t1<-t
+  #t2<-t
+  if(tS==Inf)tS<-t
+  resultados<-list("tiempos en el sistema",tm,"clientes en el sistema",c,
+                "tiempo medio cliente en el sistema",
+                mean(tm,na.rm=TRUE),
+                "número medio clientes en el sistema",mean(c),
+                "tiempos atención",Y,
+                "última salida",tS,
+                "clientes atendidos",NLL)
+  
+    return(resultados)
+}
+
+
+```
+
+
+Ejecuta 1000 veces la simulación
+```{r}
+clientes_atendidos <- vector()
+for (i in 1:1000) {
+  out <- unserv()
+  clientes_atendidos[i] <- out[[14]]
+}
+
+#out = unserv()
+#plot(unserv(LL)[[4]],type="l", ylab="Numero de clientes", xlab="Eventos")
+hist(clientes_atendidos,main = "Frecuencia de clientes atendidos",xlab = "clientes atendidos en 10 horas" )
+```
+
+
+##Punto 2
 
 Un sistema necesita $n$ máquinas funcionando. Para asegurarse en caso de fallas mecánicas se dispone de algunas máquinas adicionales. Si una máquina falla es inmediatamente reemplazada por una de las máquinas disponibles. La máquina con fallos es enviada a la sección de reparación. La sección de reparación consiste en una sola persona que repara las máquinas de una en una. Una vez la máquina es reparada se reincorpora al conjunto de máquinas disponibles como reemplazo. Todos los tiempos de reparación son variables aleatorias independientes con distribución de probabilidad $G$. Cada vez que una maquina es puesta en uso, el tiempo que funciona antes de sufrir una falla mecánica es una variable aleatoria con función de probabilidad $F$. Se dice que el sistema colapsa cuando una máquina falla y no hay máquinas extra disponibles para reemplazo. Asumiendo que inicialmente existen $n + s$ máquinas funcionales de las cuales $n$ están en uso, y $s$ pueden ser utilizadas para reemplazar las máquinas que fallen, encuentre el tiempo esperado $T$, en el cual el sistema colapsa después de ejecutar la simulación 100 veces, si $n = 4$, $s = 3$, $F(x) = 1 - e^{-x}$, y $G(x) = 1 − e^{-2x}$. Realice el análisis del sistema y utilizando la estrategia de simulación basada en eventos discretos implemente la simulación en R.
 
----
 
+
+##Punto 3
 Un sistema experimenta choques que ocurren de acuerdo con un proceso de Poisson que tiene una tasa de 1 por hora. Cada choque tiene una cierta cantidad de daños asociados. Estos daños son asumidos como variables aleatorias independientes (que también son independientes del tiempo en el cual ocurre el choque), y que tiene la siguiente función de densidad de probabilidad:
 
 $f(x) = xe^{-x}, x > 0$
